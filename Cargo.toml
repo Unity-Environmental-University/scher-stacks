@@ -1,0 +1,45 @@
+[package]
+name = "scher-stacks"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Standing REST+MCP service over a Postgres-backed scher-core Society, one Society per tenant (stack). Append-only wire: no PUT/PATCH/DELETE."
+
+[[bin]]
+name = "scher-stacks"
+path = "src/main.rs"
+
+[dependencies]
+# The kernel. Path dep, literal and relative — same posture as gen4-policy's own dependency on
+# scher-core (penelope-gen4/gen4-policy/Cargo.toml). Zero-dep, pure, sync; embedding it in a
+# server changes nothing about it (scher-core's own testimony, 2026-07-03 committee).
+scher-core = { path = "../penelope-gen4/scher/scher-core" }
+
+# REST surface. gen4-api's own choice (penelope-gen4/api/Cargo.toml) — one web stance across this
+# repo family. A router, not a framework-with-opinions-about-your-data.
+axum = "0.7"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net"] }
+
+# Wire (de)serialization — hand-written structs (wire.rs), serde only does the mechanical
+# field-by-field part. Nothing is generated FROM these derives (no OpenAPI doc, no client SDK).
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Raw SQL, no ORM. query_as into hand-written structs — the literal SQL string in the source IS
+# the string that hits Postgres, no query-builder DSL between intent and SELECT. `migrate` feature
+# is a loader (reads numbered .sql files at runtime), not a generator — it doesn't write, infer, or
+# diff a schema.
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres", "macros", "migrate"] }
+
+# provenance.rs's hash recipe (extends api/src/crypto.rs's beat_hash_v2 pattern, copied in per the
+# design doc — no path-dep on penelope-gen4's api crate). Same crate api/Cargo.toml already uses.
+sha2 = "0.10"
+
+[dev-dependencies]
+# Matches scher-core's own testing discipline: invariants-are-the-spec property tests, now with
+# the store as a third engine (persist-then-load round-trip, inert-lay through HTTP, as_of replay).
+proptest = "1"
+
+# provenance.rs's own stress test (10,000 distinct DAG-shaped chains, deterministically seeded) —
+# dev-only, the recipe itself has no randomness in it.
+rand = "0.8"
