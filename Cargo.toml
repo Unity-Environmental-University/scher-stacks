@@ -13,7 +13,10 @@ path = "src/main.rs"
 # The kernel. Path dep, literal and relative — same posture as gen4-policy's own dependency on
 # scher-core (penelope-gen4/gen4-policy/Cargo.toml). Zero-dep, pure, sync; embedding it in a
 # server changes nothing about it (scher-core's own testimony, 2026-07-03 committee).
-scher-core = { path = "../penelope-gen4/scher/scher-core" }
+# scher-core lives inside the scher repo (public, MIT, Unity Environmental
+# University) — cargo resolves the crate within it. For local development
+# against a checkout, use a [patch] section or a path override.
+scher-core = { git = "https://github.com/Unity-Environmental-University/scher.git", branch = "frame-is-not-a-user" }
 
 # REST surface. gen4-api's own choice (penelope-gen4/api/Cargo.toml) — one web stance across this
 # repo family. A router, not a framework-with-opinions-about-your-data.

@@ -1195,6 +1195,7 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 [[package]]
 name = "scher-core"
 version = "0.1.0"
+source = "git+https://github.com/Unity-Environmental-University/scher.git?branch=frame-is-not-a-user#f6564125e9af1ed10728cbe0dc36c42cbbfc7216"
 
 [[package]]
 name = "scher-stacks"
