@@ -45,8 +45,8 @@ async fn next_witnessed(pool: &PgPool, stack: &str, given: Option<i64>) -> sqlx:
 pub async fn lay_row(pool: &PgPool, stack: &str, row: &EventRow) -> Result<bool, StoreError> {
     let witnessed = next_witnessed(pool, stack, row.witnessed).await?;
     let result = sqlx::query(
-        r#"INSERT INTO stacks.event (stack, slug, content, title, subject, object, witnessed)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
+        r#"INSERT INTO stacks.event (stack, slug, content, title, subject, object, witnessed, laid_by)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (stack, slug) DO NOTHING"#,
     )
     .bind(stack)
@@ -56,6 +56,7 @@ pub async fn lay_row(pool: &PgPool, stack: &str, row: &EventRow) -> Result<bool,
     .bind(&row.subject)
     .bind(&row.object)
     .bind(witnessed)
+    .bind(&row.laid_by)
     .execute(pool)
     .await?;
     Ok(result.rows_affected() == 1)
@@ -85,7 +86,7 @@ pub async fn lay_rows(
 /// ordered by witnessed then insertion, with each EventRow carrying its persisted witnessed."]
 pub async fn load_stack(pool: &PgPool, stack: &str) -> Result<scher_core::Society, StoreError> {
     let rows: Vec<EventRow> = sqlx::query_as(
-        r#"SELECT slug, content, title, subject, object, witnessed
+        r#"SELECT slug, content, title, subject, object, witnessed, laid_by
            FROM stacks.event WHERE stack = $1 ORDER BY witnessed, seq"#,
     )
     .bind(stack)
@@ -99,7 +100,7 @@ pub async fn load_stack(pool: &PgPool, stack: &str) -> Result<scher_core::Societ
 /// Load a single row (for `GET /stacks/:stack/events/:slug`).
 pub async fn get_row(pool: &PgPool, stack: &str, slug: &str) -> Result<EventRow, StoreError> {
     sqlx::query_as(
-        r#"SELECT slug, content, title, subject, object, witnessed
+        r#"SELECT slug, content, title, subject, object, witnessed, laid_by
            FROM stacks.event WHERE stack = $1 AND slug = $2"#,
     )
     .bind(stack)
@@ -113,7 +114,7 @@ pub async fn get_row(pool: &PgPool, stack: &str, slug: &str) -> Result<EventRow,
 /// `load_stack` uses, so a REST client sees exactly the order the Society itself would replay.
 pub async fn list_rows(pool: &PgPool, stack: &str) -> Result<Vec<EventRow>, StoreError> {
     let rows: Vec<EventRow> = sqlx::query_as(
-        r#"SELECT slug, content, title, subject, object, witnessed
+        r#"SELECT slug, content, title, subject, object, witnessed, laid_by
            FROM stacks.event WHERE stack = $1 ORDER BY witnessed, seq"#,
     )
     .bind(stack)
