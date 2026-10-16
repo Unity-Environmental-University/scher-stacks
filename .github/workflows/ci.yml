@@ -1,0 +1,94 @@
+# CI — every push and every pull request.
+#
+# Three jobs, run in parallel: fmt, clippy, test. `test` runs against a real Postgres service
+# container and applies the migrations the way production does — by starting the binary, which
+# runs `sqlx::migrate!` on boot — before `cargo test`. If a migration doesn't apply cleanly to an
+# empty database, CI is red before any test runs.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all --check
+
+  clippy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --locked --all-targets -- -D warnings
+
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: stacks
+          POSTGRES_PASSWORD: stacks
+          POSTGRES_DB: scher_stacks
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stacks -d scher_stacks"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://stacks:stacks@localhost:5432/scher_stacks
+      BIND_ADDR: 127.0.0.1:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --locked --bin scher-stacks
+
+      # The binary migrates on startup, so booting it against the empty service DB is the
+      # migration step. Then check every file in migrations/ landed in _sqlx_migrations.
+      - name: Apply migrations (boot the service)
+        run: |
+          ./target/debug/scher-stacks > server.log 2>&1 &
+          pid=$!
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/stacks/ci-smoke/events > /dev/null; then break; fi
+            if ! kill -0 "$pid" 2> /dev/null; then cat server.log; exit 1; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8080/stacks/ci-smoke/events
+          echo
+          kill "$pid"
+          applied=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM _sqlx_migrations WHERE success")
+          expected=$(find migrations -name '*.sql' | wc -l)
+          echo "migrations applied: $applied / $expected"
+          test "$applied" -eq "$expected"
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Server log
+        if: failure()
+        run: cat server.log || true
