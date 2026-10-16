@@ -18,6 +18,9 @@ pub struct EventRow {
     /// Society-assigned. `None` on the way IN means "let the store's per-tenant clock assign
     /// one"; always `Some` on the way OUT (every persisted row has already been laid).
     pub witnessed: Option<i64>,
+    /// The frame that laid the row, as the consumer names it. `None` when nobody said.
+    #[serde(default)]
+    pub laid_by: Option<String>,
 }
 
 impl From<EventRow> for scher_core::EventRow {
@@ -31,6 +34,8 @@ impl From<EventRow> for scher_core::EventRow {
         if let Some(t) = w.witnessed {
             row = row.with_witnessed(t as u64);
         }
+        // laid_by stays on the wire and in Postgres only: the pinned scher-core predates its
+        // own laid_by (66c0af0), and nothing the store reads through a Society needs it.
         row
     }
 }
@@ -44,6 +49,7 @@ impl From<&scher_core::EventRow> for EventRow {
             subject: r.subject.clone(),
             object: r.object.clone(),
             witnessed: r.witnessed.map(|t| t as i64),
+            laid_by: None,
         }
     }
 }
