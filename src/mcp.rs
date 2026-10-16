@@ -43,11 +43,24 @@ pub struct RpcError {
 }
 
 fn ok(id: Value, result: Value) -> RpcResponse {
-    RpcResponse { jsonrpc: "2.0", id, result: Some(result), error: None }
+    RpcResponse {
+        jsonrpc: "2.0",
+        id,
+        result: Some(result),
+        error: None,
+    }
 }
 
 fn err(id: Value, message: String) -> RpcResponse {
-    RpcResponse { jsonrpc: "2.0", id, result: None, error: Some(RpcError { code: -32000, message }) }
+    RpcResponse {
+        jsonrpc: "2.0",
+        id,
+        result: None,
+        error: Some(RpcError {
+            code: -32000,
+            message,
+        }),
+    }
 }
 
 /// Dispatch one JSON-RPC request to the tool table. The tool table is exhaustive by name below —
