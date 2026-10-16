@@ -1,0 +1,11 @@
+# Release image. Assembled from the per-arch binaries the release workflow builds on
+# Debian bookworm; nothing is compiled here, and no RUN step means no emulation.
+FROM debian:bookworm-slim
+ARG TARGETARCH
+COPY --chmod=755 image-bin/scher-stacks-${TARGETARCH} /usr/local/bin/scher-stacks
+COPY migrations/ /app/migrations/
+WORKDIR /app
+ENV BIND_ADDR=0.0.0.0:8080
+EXPOSE 8080
+USER 10001
+CMD ["scher-stacks"]
