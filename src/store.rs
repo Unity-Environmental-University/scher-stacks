@@ -17,12 +17,11 @@ use crate::wire::EventRow;
 /// [ruling Fix A: "per-tenant clock, never a global MAX" — api/src/main.rs:838's own
 /// table-global `SELECT COALESCE(MAX(witnessed),0) FROM canon.event` is the wound this scopes.]
 async fn next_witnessed(pool: &PgPool, stack: &str, given: Option<i64>) -> sqlx::Result<i64> {
-    let base: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(MAX(witnessed), 0) FROM stacks.event WHERE stack = $1",
-    )
-    .bind(stack)
-    .fetch_one(pool)
-    .await?;
+    let base: i64 =
+        sqlx::query_scalar("SELECT COALESCE(MAX(witnessed), 0) FROM stacks.event WHERE stack = $1")
+            .bind(stack)
+            .fetch_one(pool)
+            .await?;
     Ok(match given {
         // An explicit witness may tie or exceed base; the store never invents a smaller one.
         Some(w) => base.max(w),

@@ -282,7 +282,7 @@ mod tests {
 
         let mut seen: HashSet<[u8; 32]> = HashSet::with_capacity(10_000);
         // seeded, reproducible failures.
-        let mut rng = StdRng::seed_from_u64(0x5CE2_57AC_5_5057);
+        let mut rng = StdRng::seed_from_u64(0x0005_CE25_7AC5_5057);
 
         // A pool of already-computed hashes to draw "ancestors" from, grown as we go so later
         // chains can (and do) reference earlier ones — this is what makes the sample a genuine
@@ -346,7 +346,10 @@ mod tests {
         let empty: [[u8; 32]; 0] = [];
         let d1 = chain_digest(&empty);
         let d2 = chain_digest(&[]);
-        assert_eq!(d1, d2, "the empty prehended set must hash identically every time");
+        assert_eq!(
+            d1, d2,
+            "the empty prehended set must hash identically every time"
+        );
 
         // and it must differ from a non-empty chain — an empty chain is a real value, not a
         // silent stand-in for "same as omitted."
