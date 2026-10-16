@@ -106,7 +106,7 @@ jobs:
       - name: Migrations tarball and checksums
         run: |
           tar -czf "assets/scher-stacks-${GITHUB_REF_NAME}-migrations.tar.gz" migrations
-          cd assets && sha256sum *.tar.gz > SHA256SUMS && cat SHA256SUMS
+          cd assets && sha256sum -- *.tar.gz > SHA256SUMS && cat SHA256SUMS
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
